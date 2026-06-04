@@ -2,10 +2,11 @@
 
 dataset:
   # Update these paths to match the local Udacity Behavioral Cloning dataset.
-  root_dir: "data/udacity"
   driving_log_csv: "data/udacity/driving_log.csv"
-  image_dir: "data/udacity/IMG"
+  image_root: "data/udacity/IMG"
   camera: "center"
+  center_camera_column: "center"
+  steering_column: "steering"
 
 preprocessing:
   image_width: 160
@@ -34,4 +35,3 @@ outputs:
   checkpoint_path: "outputs/models/best_model.keras"
   final_model_path: "outputs/models/final_model.keras"
   history_path: "outputs/models/training_history.json"
-

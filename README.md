@@ -10,10 +10,13 @@ Update these values before running data loading, training, evaluation, or infere
 
 ```yaml
 dataset:
-  root_dir: "data/udacity"
   driving_log_csv: "data/udacity/driving_log.csv"
-  image_dir: "data/udacity/IMG"
+  image_root: "data/udacity/IMG"
   camera: "center"
+  center_camera_column: "center"
+  steering_column: "steering"
 ```
+
+`driving_log_csv` should point to the local Udacity driving log file, and `image_root` should point to the directory containing the camera image files.
 
 The main implementation uses only the center camera. Left/right camera inputs, multi-camera fusion, object detection, semantic segmentation, and deployment-specific settings are outside the required scope.
