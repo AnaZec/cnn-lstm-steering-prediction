@@ -1,0 +1,37 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local configuration and secrets
+.env
+.env.*
+
+# Dataset and generated artifacts
+data/
+datasets/
+*.h5
+*.keras
+*.ckpt
+*.weights.h5
+
+# Output artifacts are generated locally.
+outputs/*
+!outputs/.gitkeep
+!outputs/models/
+outputs/models/*
+!outputs/models/.gitkeep
+!outputs/plots/
+outputs/plots/*
+!outputs/plots/.gitkeep
+!outputs/demo/
+outputs/demo/*
+!outputs/demo/.gitkeep
