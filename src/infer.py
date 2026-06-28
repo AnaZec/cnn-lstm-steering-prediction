@@ -2,7 +2,8 @@
 
 This script loads a saved trained model, builds fixed-length ordered image
 sequences, runs steering-angle prediction, saves predictions aligned with the
-corresponding output frames, and can optionally export annotated demo frames.
+corresponding output frames, applies threshold-based lane-change detection, and
+can optionally export annotated demo frames.
 
 Each prediction is aligned with the final frame of its input sequence.
 """
@@ -18,6 +19,7 @@ import pandas as pd
 import tensorflow as tf
 
 from src.data import load_config, load_driving_samples
+from src.lane_change import add_lane_change_warnings
 from src.sequences import (
     build_sequence_index,
     create_sequence_generator_from_config,
@@ -92,7 +94,8 @@ def run_inference(
         max_demo_frames: Optional maximum number of annotated frames to export.
 
     Returns:
-        DataFrame containing frame-aligned steering-angle predictions.
+        DataFrame containing frame-aligned steering-angle predictions and
+        lane-change warning columns.
 
     Raises:
         FileNotFoundError: If the saved model does not exist.
@@ -169,6 +172,8 @@ def run_inference(
             "target_steering_angle"
         ].astype(float)
 
+    results = add_lane_change_warnings(results, config)
+
     resolved_output_path.parent.mkdir(parents=True, exist_ok=True)
     results.to_csv(resolved_output_path, index=False)
 
@@ -181,11 +186,16 @@ def run_inference(
             max_frames=max_demo_frames,
         )
 
+    warning_frames = int(results["lane_change_warning"].sum())
+    event_count = int(results["lane_change_event_id"].max())
+
     print()
     print("Inference complete")
     print(f"Model path: {resolved_model_path}")
     print(f"Sequences predicted: {len(results)}")
     print(f"Predictions saved to: {resolved_output_path}")
+    print(f"Lane-change warning frames: {warning_frames}")
+    print(f"Lane-change warning intervals: {event_count}")
 
     if export_demo_frames:
         print(f"Annotated demo frames saved to: {resolved_demo_frames_dir}")
