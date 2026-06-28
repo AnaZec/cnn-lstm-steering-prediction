@@ -55,3 +55,4 @@ outputs:
   checkpoint_path: "outputs/models/best_model.keras"
   final_model_path: "outputs/models/final_model.keras"
   history_path: "outputs/models/training_history.json"
+  evaluation_metrics_path: "outputs/evaluation/evaluation_metrics.json"
