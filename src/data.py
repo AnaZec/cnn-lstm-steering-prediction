@@ -216,12 +216,86 @@ def load_driving_samples(
     return samples
 
 
+def split_train_validation_samples(
+    samples: pd.DataFrame,
+    *,
+    validation_ratio: float,
+    sequence_length: int,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Split ordered samples into train and validation sets without sequence leakage.
+
+    The split is performed on raw ordered rows before sequence construction.
+    This prevents overlapping source frames from appearing in both training and
+    validation sequences.
+    """
+    if not 0.0 < validation_ratio < 1.0:
+        raise ValueError(
+            f"validation_ratio must be between 0 and 1, got {validation_ratio}"
+        )
+
+    if sequence_length < 1:
+        raise ValueError(f"sequence_length must be >= 1, got {sequence_length}")
+
+    required_columns = {"image_path", "steering_angle"}
+    missing_columns = required_columns.difference(samples.columns)
+
+    if missing_columns:
+        raise ValueError(
+            f"samples is missing required column(s): {sorted(missing_columns)}"
+        )
+
+    total_samples = len(samples)
+
+    if total_samples < 2 * sequence_length:
+        raise ValueError(
+            "Not enough samples to create train and validation sequences. "
+            f"Need at least {2 * sequence_length}, got {total_samples}."
+        )
+
+    validation_size = int(round(total_samples * validation_ratio))
+    validation_size = max(validation_size, sequence_length)
+
+    train_size = total_samples - validation_size
+
+    if train_size < sequence_length:
+        raise ValueError(
+            "Training split is too small to create at least one sequence. "
+            f"train_size={train_size}, sequence_length={sequence_length}"
+        )
+
+    train_samples = samples.iloc[:train_size].reset_index(drop=True)
+    validation_samples = samples.iloc[train_size:].reset_index(drop=True)
+
+    return train_samples, validation_samples
+    
+
 def main() -> None:
-    """Small CLI smoke test for the data loader."""
+    """Small CLI smoke test for the data loader and temporal split."""
+    config = load_config("config.yaml")
+
     samples = load_driving_samples("config.yaml")
 
+    split_config = config.get("split", {})
+    sequence_config = config.get("sequences", {})
+
+    validation_ratio = float(split_config.get("validation_ratio", 0.2))
+    sequence_length = int(sequence_config.get("sequence_length", 5))
+
+    train_samples, validation_samples = split_train_validation_samples(
+        samples,
+        validation_ratio=validation_ratio,
+        sequence_length=sequence_length,
+    )
+
     print(f"Loaded valid samples: {len(samples)}")
-    print(samples.head())
+    print(f"Training samples: {len(train_samples)}")
+    print(f"Validation samples: {len(validation_samples)}")
+    print()
+    print("First training samples:")
+    print(train_samples.head())
+    print()
+    print("First validation samples:")
+    print(validation_samples.head())
 
 
 if __name__ == "__main__":
