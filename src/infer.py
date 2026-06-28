@@ -1,8 +1,8 @@
 """Inference pipeline for CNN+LSTM steering-angle prediction.
 
 This script loads a saved trained model, builds fixed-length ordered image
-sequences, runs steering-angle prediction, and saves predictions aligned with
-the corresponding output frames.
+sequences, runs steering-angle prediction, saves predictions aligned with the
+corresponding output frames, and can optionally export annotated demo frames.
 
 Each prediction is aligned with the final frame of its input sequence.
 """
@@ -23,6 +23,7 @@ from src.sequences import (
     create_sequence_generator_from_config,
     get_sequence_config,
 )
+from src.visualization import export_annotated_frames
 
 
 def build_inference_sequence_index(
@@ -57,12 +58,11 @@ def build_inference_sequence_index(
     if max_sequences is not None:
         if max_sequences < 1:
             raise ValueError(f"max_sequences must be positive, got {max_sequences}")
+
         sequence_index = sequence_index.head(max_sequences).reset_index(drop=True)
 
-    output_frame_indices = sequence_index["end_index"].astype(int)
-
     sequence_index = sequence_index.copy()
-    sequence_index["output_frame_index"] = output_frame_indices
+    sequence_index["output_frame_index"] = sequence_index["end_index"].astype(int)
     sequence_index["output_image_path"] = [
         frame_paths[-1] for frame_paths in sequence_index["frame_paths"]
     ]
@@ -76,6 +76,8 @@ def run_inference(
     model_path: str | Path | None = None,
     output_path: str | Path | None = None,
     max_sequences: int | None = None,
+    export_demo_frames: bool = False,
+    max_demo_frames: int | None = 50,
 ) -> pd.DataFrame:
     """Run steering-angle inference over ordered image sequences.
 
@@ -86,12 +88,15 @@ def run_inference(
         output_path: Optional CSV output path. If omitted, the inference output
             path from config.yaml is used.
         max_sequences: Optional maximum number of sequences for quick testing.
+        export_demo_frames: Whether to export annotated demo frames.
+        max_demo_frames: Optional maximum number of annotated frames to export.
 
     Returns:
         DataFrame containing frame-aligned steering-angle predictions.
 
     Raises:
         FileNotFoundError: If the saved model does not exist.
+        RuntimeError: If prediction count does not match sequence count.
     """
     config = load_config(config_path)
     outputs_config = config.get("outputs", {})
@@ -108,6 +113,13 @@ def run_inference(
         else outputs_config.get(
             "inference_predictions_path",
             "outputs/inference/steering_predictions.csv",
+        )
+    )
+
+    resolved_demo_frames_dir = Path(
+        outputs_config.get(
+            "demo_frames_dir",
+            "outputs/demo/annotated_frames",
         )
     )
 
@@ -137,7 +149,8 @@ def run_inference(
     if len(predictions) != len(sequence_index):
         raise RuntimeError(
             "Prediction count does not match sequence count, "
-            f"got {len(predictions)} predictions for {len(sequence_index)} sequences."
+            f"got {len(predictions)} predictions for "
+            f"{len(sequence_index)} sequences."
         )
 
     results = pd.DataFrame(
@@ -159,11 +172,25 @@ def run_inference(
     resolved_output_path.parent.mkdir(parents=True, exist_ok=True)
     results.to_csv(resolved_output_path, index=False)
 
+    written_demo_frames: list[Path] = []
+
+    if export_demo_frames:
+        written_demo_frames = export_annotated_frames(
+            results,
+            resolved_demo_frames_dir,
+            max_frames=max_demo_frames,
+        )
+
     print()
     print("Inference complete")
     print(f"Model path: {resolved_model_path}")
     print(f"Sequences predicted: {len(results)}")
     print(f"Predictions saved to: {resolved_output_path}")
+
+    if export_demo_frames:
+        print(f"Annotated demo frames saved to: {resolved_demo_frames_dir}")
+        print(f"Annotated demo frames exported: {len(written_demo_frames)}")
+
     print()
     print("First predictions:")
     print(results.head())
@@ -203,6 +230,18 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional maximum number of sequences to process for quick tests.",
     )
+    parser.add_argument(
+        "--export-demo-frames",
+        action="store_true",
+        help="Export annotated demo frames with predicted steering-angle overlay.",
+    )
+    parser.add_argument(
+        "--max-demo-frames",
+        type=int,
+        default=50,
+        help="Maximum number of annotated demo frames to export.",
+    )
+
     return parser.parse_args()
 
 
@@ -215,6 +254,8 @@ def main() -> None:
         model_path=args.model,
         output_path=args.output,
         max_sequences=args.max_sequences,
+        export_demo_frames=args.export_demo_frames,
+        max_demo_frames=args.max_demo_frames,
     )
 
 
