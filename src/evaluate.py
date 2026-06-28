@@ -1,8 +1,8 @@
 """Evaluate the trained CNN+LSTM steering-angle regression model.
 
 This script loads a saved Keras model, rebuilds the validation sequence data,
-runs predictions, computes MAE and RMSE, saves metrics as JSON, and generates a
-predicted-vs-true steering-angle plot.
+runs predictions, computes MAE and RMSE, saves metrics as JSON, and generates
+evaluation plots for reporting.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np
 import tensorflow as tf
 
@@ -122,6 +122,93 @@ def plot_predicted_vs_true_steering(
     plt.close()
 
 
+def load_training_history(path: str | Path) -> dict[str, list[float]]:
+    """Load saved Keras training history from JSON.
+
+    Args:
+        path: Path to the training history JSON file.
+
+    Returns:
+        Training history dictionary.
+
+    Raises:
+        FileNotFoundError: If the history file does not exist.
+        ValueError: If required loss keys are missing.
+    """
+    history_path = Path(path)
+
+    if not history_path.is_file():
+        raise FileNotFoundError(
+            "Training history file not found. Run training first.\n"
+            f"Expected history path: {history_path}"
+        )
+
+    with history_path.open("r", encoding="utf-8") as file:
+        history = json.load(file)
+
+    required_keys = {"loss", "val_loss"}
+    missing_keys = required_keys.difference(history)
+
+    if missing_keys:
+        raise ValueError(
+            f"Training history is missing required key(s): {sorted(missing_keys)}"
+        )
+
+    return {
+        metric_name: [float(value) for value in metric_values]
+        for metric_name, metric_values in history.items()
+    }
+
+
+def plot_training_validation_loss(
+    history: dict[str, list[float]],
+    path: str | Path,
+) -> None:
+    """Save a training-vs-validation loss plot.
+
+    Args:
+        history: Training history containing loss and val_loss.
+        path: Output plot path.
+    """
+    if "loss" not in history:
+        raise ValueError("Training history must contain 'loss'.")
+
+    if "val_loss" not in history:
+        raise ValueError("Training history must contain 'val_loss'.")
+
+    train_loss = np.asarray(history["loss"], dtype=np.float32)
+    validation_loss = np.asarray(history["val_loss"], dtype=np.float32)
+
+    if train_loss.size == 0:
+        raise ValueError("Training loss must not be empty.")
+
+    if validation_loss.size == 0:
+        raise ValueError("Validation loss must not be empty.")
+
+    if train_loss.shape != validation_loss.shape:
+        raise ValueError(
+            "Training loss and validation loss must have the same number of "
+            f"epochs, got {train_loss.shape} and {validation_loss.shape}."
+        )
+
+    epochs = np.arange(1, len(train_loss) + 1)
+
+    plot_path = Path(path)
+    plot_path.parent.mkdir(parents=True, exist_ok=True)
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(epochs, train_loss, marker="o", label="Training loss")
+    plt.plot(epochs, validation_loss, marker="o", label="Validation loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Training and Validation Loss")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(plot_path, dpi=150)
+    plt.close()
+
+
 def build_validation_generator(
     config: dict[str, Any],
     *,
@@ -180,10 +267,24 @@ def evaluate_model(
         )
     )
 
-    resolved_plot_path = Path(
+    resolved_prediction_plot_path = Path(
         outputs_config.get(
             "prediction_plot_path",
             "outputs/plots/predicted_vs_true_steering.png",
+        )
+    )
+
+    resolved_history_path = Path(
+        outputs_config.get(
+            "history_path",
+            "outputs/models/training_history.json",
+        )
+    )
+
+    resolved_loss_plot_path = Path(
+        outputs_config.get(
+            "loss_plot_path",
+            "outputs/plots/training_validation_loss.png",
         )
     )
 
@@ -211,7 +312,14 @@ def evaluate_model(
     plot_predicted_vs_true_steering(
         y_true,
         y_pred,
-        resolved_plot_path,
+        resolved_prediction_plot_path,
+    )
+
+    history = load_training_history(resolved_history_path)
+
+    plot_training_validation_loss(
+        history,
+        resolved_loss_plot_path,
     )
 
     result = {
@@ -219,7 +327,8 @@ def evaluate_model(
         "num_validation_sequences": int(len(validation_sequence_index)),
         "mae": metrics["mae"],
         "rmse": metrics["rmse"],
-        "prediction_plot_path": str(resolved_plot_path),
+        "prediction_plot_path": str(resolved_prediction_plot_path),
+        "loss_plot_path": str(resolved_loss_plot_path),
     }
 
     save_metrics(result, resolved_metrics_path)
@@ -231,7 +340,8 @@ def evaluate_model(
     print(f"MAE: {metrics['mae']:.6f}")
     print(f"RMSE: {metrics['rmse']:.6f}")
     print(f"Metrics saved to: {resolved_metrics_path}")
-    print(f"Prediction plot saved to: {resolved_plot_path}")
+    print(f"Prediction plot saved to: {resolved_prediction_plot_path}")
+    print(f"Loss plot saved to: {resolved_loss_plot_path}")
 
     return result
 
