@@ -1,12 +1,26 @@
 # Main project configuration for the CNN+LSTM steering-angle pipeline.
 
 dataset:
-  # Update these paths to match the local Udacity Behavioral Cloning dataset.
   driving_log_csv: "data/udacity/driving_log.csv"
   image_root: "data/udacity/IMG"
+
   camera: "center"
-  center_camera_column: "center"
-  steering_column: "steering"
+
+  # This Kaggle CSV has no header row.
+  has_header: false
+
+  # Column order defined by the project assignment.
+  csv_columns:
+    - "centercam"
+    - "leftcam"
+    - "rightcam"
+    - "steering_angle"
+    - "throttle"
+    - "reverse"
+    - "speed"
+
+  center_camera_column: "centercam"
+  steering_column: "steering_angle"
 
 preprocessing:
   image_width: 160
@@ -35,3 +49,4 @@ outputs:
   checkpoint_path: "outputs/models/best_model.keras"
   final_model_path: "outputs/models/final_model.keras"
   history_path: "outputs/models/training_history.json"
+
