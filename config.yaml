@@ -43,6 +43,11 @@ training:
   epochs: 10
   learning_rate: 0.001
 
+model:
+  lstm_units: 64
+  dense_units: 32
+  dropout_rate: 0.2
+
 outputs:
   models_dir: "outputs/models"
   plots_dir: "outputs/plots"
