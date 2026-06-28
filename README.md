@@ -1,95 +1,154 @@
-# CNN-LSTM Steering Prediction
+## Setup and Run Instructions
 
-This project implements a CNN+LSTM-based pipeline for steering-angle prediction from front-camera driving images.
-
-The project is developed as a local Python/TensorFlow course project.
-
-## Dataset Configuration
-
-The project is intended to use the Udacity Self-Driving Car Behavioral Cloning dataset.
-
-Dataset files should be placed locally and referenced from `config.yaml`.
-
-Expected dataset inputs:
-
-```text
-data/
-└── udacity/
-    ├── driving_log.csv
-    └── IMG/
-        ├── center_*.jpg
-        ├── left_*.jpg
-        └── right_*.jpg
-```
-
-The initial implementation uses the center front camera images and steering-angle labels.
+This project predicts vehicle steering angle from short sequences of front-camera images using a CNN+LSTM model. The main implementation uses the **center camera** from the Udacity behavioral cloning dataset.
 
 ## Environment Setup
 
-Python 3.11 or newer is recommended for local development and training.
-
-On Ubuntu, make sure virtual environment support is installed:
-
-```bash
-sudo apt update
-sudo apt install python3-full python3-venv
-```
+Python 3.11 is recommended.
 
 Create and activate a virtual environment:
 
 ```bash
-python3 -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate
 ```
 
-Upgrade pip and install the project dependencies:
+Install dependencies:
 
 ```bash
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Verify that the main dependencies import correctly:
+Verify that TensorFlow imports correctly:
 
 ```bash
-python -c "import tensorflow as tf; import cv2; import pandas as pd; import yaml; import sklearn; import matplotlib; print('OK')"
+python -c "import tensorflow as tf; print(tf.__version__)"
 ```
 
-Expected output:
+## Dataset Placement
+
+The project expects the Udacity behavioral cloning dataset to be placed under:
 
 ```text
-OK
+data/udacity/
 ```
 
-TensorFlow may print informational CPU/GPU messages. These are acceptable as long as the command finishes successfully and prints `OK`.
-
-## Dependencies
-
-The project dependencies are listed in `requirements.txt`.
-
-Main dependencies:
-
-* TensorFlow/Keras: CNN+LSTM model implementation, training, inference, and model saving/loading
-* NumPy: numerical arrays and tensor manipulation
-* pandas: loading and processing the driving log CSV file
-* OpenCV: image loading, resizing, preprocessing, and output-frame visualization
-* Matplotlib: training and evaluation plots
-* scikit-learn: train/validation splitting and regression metrics
-* PyYAML: reading configuration from `config.yaml`
-* tqdm: progress bars during data processing
-
-## Notes
-
-This project is intended for local course-project training and evaluation.
-
-The dependency list intentionally does not include object-detection, segmentation, cloud deployment, TensorRT, ONNX, or TFLite packages.
-
-## Results Summary
-
-A compact final results summary for course submission and defense preparation is available in:
+Expected local structure:
 
 ```text
-docs/results_summary.md
+data/udacity/
+├── driving_log.csv
+└── IMG/
+    ├── center_*.jpg
+    ├── left_*.jpg
+    └── right_*.jpg
 ```
 
-The summary reports validation MAE/RMSE, references generated plots, references annotated demo output, and documents project limitations.
+The implementation uses the **center-camera image path** and steering-angle column from `driving_log.csv`.
+
+The default dataset configuration is in `config.yaml`:
+
+```yaml
+dataset:
+  driving_log_csv: "data/udacity/driving_log.csv"
+  image_root: "data/udacity/IMG"
+  camera: "center"
+  center_camera_column: "centercam"
+  steering_column: "steering_angle"
+```
+
+If your dataset is stored somewhere else, update only the dataset paths in `config.yaml`.
+
+The `data/` directory is intentionally ignored by Git because the dataset is large and should not be committed.
+
+## Training
+
+Train the CNN+LSTM model:
+
+```bash
+python -m src.train --config config.yaml
+```
+
+Training saves model artifacts under:
+
+```text
+outputs/models/
+```
+
+Main generated files:
+
+```text
+outputs/models/best_model.keras
+outputs/models/final_model.keras
+outputs/models/training_history.json
+```
+
+The `outputs/` directory is ignored by Git because it contains generated artifacts.
+
+## Evaluation
+
+Evaluate the trained model on the validation split:
+
+```bash
+python -m src.evaluate --config config.yaml
+```
+
+Evaluation saves metrics and plots under:
+
+```text
+outputs/evaluation/
+outputs/plots/
+```
+
+Main generated files:
+
+```text
+outputs/evaluation/evaluation_metrics.json
+outputs/plots/predicted_vs_true_steering.png
+outputs/plots/training_validation_loss.png
+```
+
+## Inference and Demo Frame Export
+
+Run inference on ordered image sequences:
+
+```bash
+python -m src.infer --config config.yaml --max-sequences 200
+```
+
+Run inference and export annotated demo frames:
+
+```bash
+python -m src.infer \
+  --config config.yaml \
+  --max-sequences 200 \
+  --export-demo-frames \
+  --max-demo-frames 50
+```
+
+Inference saves predictions to:
+
+```text
+outputs/inference/steering_predictions.csv
+```
+
+Annotated demo frames are saved to:
+
+```text
+outputs/demo/annotated_frames/
+```
+
+The exported frames can include:
+
+* predicted steering-angle overlay
+* optional true steering-angle overlay
+* lane-change warning overlay when active
+
+## Lane-Change Warning
+
+The lane-change warning is based on the predicted steering-angle sequence. The detector smooths predicted steering values and applies threshold-based sustained-deviation logic.
+
+This project does **not** perform real lane detection. It does not detect lane markers, lane boundaries, lane geometry, or vehicle position within the lane.
+
+The warning should be interpreted as a steering-pattern heuristic for demonstration purposes.
