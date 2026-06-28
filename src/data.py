@@ -215,6 +215,7 @@ def load_driving_samples(
 
     return samples
 
+
 def split_train_validation_samples(
     samples: pd.DataFrame,
     *,
@@ -266,7 +267,7 @@ def split_train_validation_samples(
     validation_samples = samples.iloc[train_size:].reset_index(drop=True)
 
     return train_samples, validation_samples
-
+    
 
 def main() -> None:
     """Small CLI smoke test for the data loader and temporal split."""
@@ -295,6 +296,7 @@ def main() -> None:
     print()
     print("First validation samples:")
     print(validation_samples.head())
+
 
 if __name__ == "__main__":
     main()

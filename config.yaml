@@ -6,8 +6,10 @@ dataset:
 
   camera: "center"
 
+  # This Kaggle CSV has no header row.
   has_header: false
 
+  # Column order defined by the project assignment.
   csv_columns:
     - "centercam"
     - "leftcam"
