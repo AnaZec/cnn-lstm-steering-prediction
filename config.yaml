@@ -59,3 +59,4 @@ outputs:
   prediction_plot_path: "outputs/plots/predicted_vs_true_steering.png"
   loss_plot_path: "outputs/plots/training_validation_loss.png"
   inference_predictions_path: "outputs/inference/steering_predictions.csv"
+  demo_frames_dir: "outputs/demo/annotated_frames"
