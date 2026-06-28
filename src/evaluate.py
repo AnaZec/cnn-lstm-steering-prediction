@@ -1,7 +1,8 @@
 """Evaluate the trained CNN+LSTM steering-angle regression model.
 
 This script loads a saved Keras model, rebuilds the validation sequence data,
-runs predictions, computes MAE and RMSE, and saves the metrics as JSON.
+runs predictions, computes MAE and RMSE, saves metrics as JSON, and generates a
+predicted-vs-true steering-angle plot.
 """
 
 from __future__ import annotations
@@ -11,6 +12,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+import matplotlib
+
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
@@ -30,18 +36,7 @@ def compute_regression_metrics(
     y_true: np.ndarray,
     y_pred: np.ndarray,
 ) -> dict[str, float]:
-    """Compute MAE and RMSE for steering-angle regression.
-
-    Args:
-        y_true: Ground-truth steering angles.
-        y_pred: Predicted steering angles.
-
-    Returns:
-        Dictionary containing mae and rmse.
-
-    Raises:
-        ValueError: If the input arrays are empty or have different shapes.
-    """
+    """Compute MAE and RMSE for steering-angle regression."""
     y_true = np.asarray(y_true, dtype=np.float32).reshape(-1)
     y_pred = np.asarray(y_pred, dtype=np.float32).reshape(-1)
 
@@ -74,22 +69,65 @@ def save_metrics(metrics: dict[str, Any], path: str | Path) -> None:
         json.dump(metrics, file, indent=2)
 
 
+def plot_predicted_vs_true_steering(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    path: str | Path,
+    *,
+    max_points: int | None = 500,
+) -> None:
+    """Save a predicted-vs-true steering-angle plot.
+
+    Args:
+        y_true: Ground-truth steering angles.
+        y_pred: Predicted steering angles.
+        path: Output image path.
+        max_points: Optional maximum number of validation points to plot.
+            This keeps the plot readable for documentation and defense slides.
+    """
+    y_true = np.asarray(y_true, dtype=np.float32).reshape(-1)
+    y_pred = np.asarray(y_pred, dtype=np.float32).reshape(-1)
+
+    if y_true.size == 0:
+        raise ValueError("y_true must not be empty.")
+
+    if y_true.shape != y_pred.shape:
+        raise ValueError(
+            f"y_true and y_pred must have the same shape, "
+            f"got {y_true.shape} and {y_pred.shape}."
+        )
+
+    if max_points is not None:
+        if max_points < 1:
+            raise ValueError(f"max_points must be positive, got {max_points}")
+
+        y_true = y_true[:max_points]
+        y_pred = y_pred[:max_points]
+
+    sample_indices = np.arange(len(y_true))
+
+    plot_path = Path(path)
+    plot_path.parent.mkdir(parents=True, exist_ok=True)
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(sample_indices, y_true, label="True steering angle")
+    plt.plot(sample_indices, y_pred, label="Predicted steering angle")
+    plt.xlabel("Validation sequence index")
+    plt.ylabel("Steering angle")
+    plt.title("Predicted vs True Steering Angle")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(plot_path, dpi=150)
+    plt.close()
+
+
 def build_validation_generator(
     config: dict[str, Any],
     *,
     config_path: str | Path,
 ):
-    """Build the validation sequence generator used for evaluation.
-
-    Args:
-        config: Parsed project configuration.
-        config_path: Path to config.yaml.
-
-    Returns:
-        Tuple containing:
-            validation_generator,
-            validation_sequence_index
-    """
+    """Build the validation sequence generator used for evaluation."""
     sequence_config = get_sequence_config(config)
     split_config = config.get("split", {})
 
@@ -123,18 +161,7 @@ def evaluate_model(
     model_path: str | Path | None = None,
     metrics_path: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Evaluate a saved CNN+LSTM model on the validation sequences.
-
-    Args:
-        config_path: Path to project config file.
-        model_path: Optional path to saved Keras model. If omitted, the best
-            checkpoint path from config.yaml is used.
-        metrics_path: Optional output path for metrics JSON. If omitted, the
-            evaluation metrics path from config.yaml is used.
-
-    Returns:
-        Metrics dictionary.
-    """
+    """Evaluate a saved CNN+LSTM model on validation sequences."""
     config = load_config(config_path)
     outputs_config = config.get("outputs", {})
 
@@ -150,6 +177,13 @@ def evaluate_model(
         else outputs_config.get(
             "evaluation_metrics_path",
             "outputs/evaluation/evaluation_metrics.json",
+        )
+    )
+
+    resolved_plot_path = Path(
+        outputs_config.get(
+            "prediction_plot_path",
+            "outputs/plots/predicted_vs_true_steering.png",
         )
     )
 
@@ -174,11 +208,18 @@ def evaluate_model(
 
     metrics = compute_regression_metrics(y_true, y_pred)
 
+    plot_predicted_vs_true_steering(
+        y_true,
+        y_pred,
+        resolved_plot_path,
+    )
+
     result = {
         "model_path": str(resolved_model_path),
         "num_validation_sequences": int(len(validation_sequence_index)),
         "mae": metrics["mae"],
         "rmse": metrics["rmse"],
+        "prediction_plot_path": str(resolved_plot_path),
     }
 
     save_metrics(result, resolved_metrics_path)
@@ -190,6 +231,7 @@ def evaluate_model(
     print(f"MAE: {metrics['mae']:.6f}")
     print(f"RMSE: {metrics['rmse']:.6f}")
     print(f"Metrics saved to: {resolved_metrics_path}")
+    print(f"Prediction plot saved to: {resolved_plot_path}")
 
     return result
 
