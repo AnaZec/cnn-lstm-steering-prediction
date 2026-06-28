@@ -83,3 +83,13 @@ Main dependencies:
 This project is intended for local course-project training and evaluation.
 
 The dependency list intentionally does not include object-detection, segmentation, cloud deployment, TensorRT, ONNX, or TFLite packages.
+
+## Results Summary
+
+A compact final results summary for course submission and defense preparation is available in:
+
+```text
+docs/results_summary.md
+```
+
+The summary reports validation MAE/RMSE, references generated plots, references annotated demo output, and documents project limitations.
