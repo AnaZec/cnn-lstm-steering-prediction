@@ -56,3 +56,5 @@ outputs:
   final_model_path: "outputs/models/final_model.keras"
   history_path: "outputs/models/training_history.json"
   evaluation_metrics_path: "outputs/evaluation/evaluation_metrics.json"
+  prediction_plot_path: "outputs/plots/predicted_vs_true_steering.png"
+  loss_plot_path: "outputs/plots/training_validation_loss.png"
