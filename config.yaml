@@ -60,3 +60,9 @@ outputs:
   loss_plot_path: "outputs/plots/training_validation_loss.png"
   inference_predictions_path: "outputs/inference/steering_predictions.csv"
   demo_frames_dir: "outputs/demo/annotated_frames"
+  lane_change_predictions_path: "outputs/inference/lane_change_predictions.csv"
+
+lane_change:
+  steering_threshold: 0.15
+  smoothing_window: 5
+  min_duration_frames: 5
