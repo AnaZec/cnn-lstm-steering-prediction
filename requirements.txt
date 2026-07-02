@@ -1,8 +1,8 @@
-tensorflow
-numpy
-pandas
-opencv-python
-matplotlib
-scikit-learn
-PyYAML
-tqdm
+tensorflow==2.21.0
+numpy==2.5.0
+pandas==3.0.3
+opencv-python==4.13.0.92
+matplotlib==3.11.0
+scikit-learn==1.9.0
+PyYAML==6.0.3
+tqdm==4.68.3
