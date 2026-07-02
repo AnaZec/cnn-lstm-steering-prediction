@@ -28,8 +28,8 @@ The trained CNN+LSTM model is evaluated on the validation sequence split.
 
 | Metric | Value |
 |---|---:|
-| MAE | `TODO: copy value from outputs/evaluation/evaluation_metrics.json` |
-| RMSE | `TODO: copy value from outputs/evaluation/evaluation_metrics.json` |
+| MAE | `0.274681` |
+| RMSE | `0.341258` |
 
 MAE reports the average absolute steering-angle error. RMSE penalizes larger steering-angle errors more strongly.
 
@@ -89,9 +89,9 @@ Local inference summary:
 
 | Item | Value |
 |---|---:|
-| Prediction rows | `TODO: copy from outputs/inference/steering_predictions.csv` |
-| Lane-change warning frames | `TODO: copy from lane_change_warning column` |
-| Lane-change warning intervals | `TODO: copy max lane_change_event_id` |
+| Prediction rows | `200` |
+| Lane-change warning frames | `167` |
+| Lane-change warning intervals | `5` |
 
 The lane-change warning is based on the predicted steering-angle sequence. It is not based on lane markers, lane segmentation, lane boundaries, or real visual lane detection.
 
