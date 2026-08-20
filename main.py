@@ -39,6 +39,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Save the rendered demo to outputs/demo/steering_demo.mp4.",
     )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Continue training from the best saved checkpoint.",
+    )
     return parser
 
 
@@ -47,7 +52,7 @@ def main() -> None:
 
     if args.command in ("train", "all"):
         from train import train
-        train(args.config)
+        train(args.config, resume=args.resume)
 
     if args.command in ("evaluate", "all"):
         from evaluate import evaluate

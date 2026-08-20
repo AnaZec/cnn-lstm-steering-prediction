@@ -180,6 +180,14 @@ Train the model:
 python main.py train
 ```
 
+Continue training from the best saved validation checkpoint:
+
+```bash
+python main.py train --resume
+```
+
+When resumed, the existing `best_model.keras` checkpoint is loaded with its optimizer state, additional epochs are trained, and the training history is appended while preserving the best validation checkpoint across runs.
+
 Evaluate the best saved checkpoint:
 
 ```bash
