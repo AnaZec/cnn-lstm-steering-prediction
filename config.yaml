@@ -1,15 +1,7 @@
-# Main project configuration for the CNN+LSTM steering-angle pipeline.
-
 dataset:
   driving_log_csv: "data/udacity/driving_log.csv"
   image_root: "data/udacity/IMG"
-
-  camera: "center"
-
-  # This Kaggle CSV has no header row.
   has_header: false
-
-  # Column order defined by the project assignment.
   csv_columns:
     - "centercam"
     - "leftcam"
@@ -18,7 +10,6 @@ dataset:
     - "throttle"
     - "reverse"
     - "speed"
-
   center_camera_column: "centercam"
   steering_column: "steering_angle"
 
@@ -31,12 +22,10 @@ preprocessing:
 sequences:
   sequence_length: 5
   stride: 1
-  target: "last_frame"
 
 split:
   validation_ratio: 0.2
   random_seed: 42
-  strategy: "temporal"
 
 training:
   batch_size: 32
@@ -48,10 +37,12 @@ model:
   dense_units: 32
   dropout_rate: 0.2
 
+lane_change:
+  steering_threshold: 0.15
+  smoothing_window: 5
+  min_duration_frames: 5
+
 outputs:
-  models_dir: "outputs/models"
-  plots_dir: "outputs/plots"
-  demo_dir: "outputs/demo"
   checkpoint_path: "outputs/models/best_model.keras"
   final_model_path: "outputs/models/final_model.keras"
   history_path: "outputs/models/training_history.json"
@@ -60,9 +51,3 @@ outputs:
   loss_plot_path: "outputs/plots/training_validation_loss.png"
   inference_predictions_path: "outputs/inference/steering_predictions.csv"
   demo_frames_dir: "outputs/demo/annotated_frames"
-  lane_change_predictions_path: "outputs/inference/lane_change_predictions.csv"
-
-lane_change:
-  steering_threshold: 0.15
-  smoothing_window: 5
-  min_duration_frames: 5
