@@ -34,6 +34,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=50,
         help="Milliseconds between demo frames.",
     )
+    parser.add_argument(
+        "--save-video",
+        action="store_true",
+        help="Save the rendered demo to outputs/demo/steering_demo.mp4.",
+    )
     return parser
 
 
@@ -55,6 +60,7 @@ def main() -> None:
             max_sequences=args.frames,
             show_window=not args.no_window,
             delay_ms=args.delay,
+            save_video=args.save_video,
         )
 
 

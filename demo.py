@@ -150,6 +150,7 @@ def run_demo(
     max_sequences: int = 200,
     show_window: bool = True,
     delay_ms: int = 50,
+    save_video: bool = False,
 ) -> pd.DataFrame:
     """Run the trained model on held-out validation sequences and show results."""
     config = load_config(config_path)
@@ -191,19 +192,38 @@ def run_demo(
         print("Press Q or Esc to exit.")
         cv2.namedWindow("CNN + LSTM Steering Prediction", cv2.WINDOW_AUTOSIZE)
 
-    for i, row in results.iterrows():
-        annotated = _annotate_frame(row)
-        cv2.imwrite(str(demo_dir / f"frame_{i:05d}.jpg"), annotated)
+    video_writer = None
+    video_path = Path("outputs/demo/steering_demo.mp4")
+    if save_video:
+        video_path.parent.mkdir(parents=True, exist_ok=True)
+        fps = 1000.0 / max(delay_ms, 1)
+        frame_size = (DISPLAY_WIDTH, FRAME_HEIGHT + FOOTER_HEIGHT)
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        video_writer = cv2.VideoWriter(str(video_path), fourcc, fps, frame_size)
+        if not video_writer.isOpened():
+            raise RuntimeError(f"Could not create video: {video_path}")
 
+    try:
+        for i, row in results.iterrows():
+            annotated = _annotate_frame(row)
+            cv2.imwrite(str(demo_dir / f"frame_{i:05d}.jpg"), annotated)
+
+            if video_writer is not None:
+                video_writer.write(annotated)
+
+            if show_window:
+                cv2.imshow("CNN + LSTM Steering Prediction", annotated)
+                key = cv2.waitKey(delay_ms) & 0xFF
+                if key in (ord("q"), 27):
+                    break
+    finally:
+        if video_writer is not None:
+            video_writer.release()
         if show_window:
-            cv2.imshow("CNN + LSTM Steering Prediction", annotated)
-            key = cv2.waitKey(delay_ms) & 0xFF
-            if key in (ord("q"), 27):
-                break
-
-    if show_window:
-        cv2.destroyAllWindows()
+            cv2.destroyAllWindows()
 
     print(f"Predictions saved to: {output_csv}")
     print(f"Annotated frames saved to: {demo_dir}")
+    if save_video:
+        print(f"Demo video saved to: {video_path}")
     return results
