@@ -1,154 +1,127 @@
-## Setup and Run Instructions
+# CNN + LSTM Steering-Angle Prediction
 
-This project predicts vehicle steering angle from short sequences of front-camera images using a CNN+LSTM model. The main implementation uses the **center camera** from the Udacity behavioral cloning dataset.
+The project predicts vehicle steering angle from short sequences of front-camera images and raises a warning when the predicted steering sequence indicates a sustained possible lane change.
 
-## Environment Setup
+## Project structure
+
+```text
+cnn-lstm-steering-prediction/
+├── main.py          # one entry point for the whole project
+├── dataset.py       # CSV loading, preprocessing, temporal sequences
+├── model.py         # TimeDistributed CNN + LSTM model
+├── train.py         # model training
+├── evaluate.py      # held-out validation metrics and plots
+├── lane_change.py   # steering-based warning heuristic
+├── demo.py          # inference + visual presentation
+├── config.yaml      # project parameters
+└── requirements.txt
+```
+
+This structure follows the project flow directly:
+
+```text
+camera frames
+    ↓
+dataset.py: load + preprocess + make sequences
+    ↓
+model.py: CNN features for each frame + LSTM over time
+    ↓
+train.py / evaluate.py
+    ↓
+demo.py: steering prediction + lane-change warning
+```
+
+## Setup
 
 Python 3.11 is recommended.
-
-Create and activate a virtual environment:
 
 ```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-Install dependencies:
-
-```bash
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-Verify that TensorFlow imports correctly:
-
-```bash
-python -c "import tensorflow as tf; print(tf.__version__)"
-```
-
-## Dataset Placement
-
-The project expects the Udacity behavioral cloning dataset to be placed under:
-
-```text
-data/udacity/
-```
-
-Expected local structure:
+Place the Udacity behavioral-cloning dataset here:
 
 ```text
 data/udacity/
 ├── driving_log.csv
 └── IMG/
-    ├── center_*.jpg
-    ├── left_*.jpg
-    └── right_*.jpg
 ```
 
-The implementation uses the **center-camera image path** and steering-angle column from `driving_log.csv`.
+## Clean presentation workflow
 
-The default dataset configuration is in `config.yaml`:
-
-```yaml
-dataset:
-  driving_log_csv: "data/udacity/driving_log.csv"
-  image_root: "data/udacity/IMG"
-  camera: "center"
-  center_camera_column: "centercam"
-  steering_column: "steering_angle"
-```
-
-If your dataset is stored somewhere else, update only the dataset paths in `config.yaml`.
-
-The `data/` directory is intentionally ignored by Git because the dataset is large and should not be committed.
-
-## Training
-
-Train the CNN+LSTM model:
+Train the model once before the defense:
 
 ```bash
-python -m src.train --config config.yaml
+python main.py train
 ```
 
-Training saves model artifacts under:
-
-```text
-outputs/models/
-```
-
-Main generated files:
-
-```text
-outputs/models/best_model.keras
-outputs/models/final_model.keras
-outputs/models/training_history.json
-```
-
-The `outputs/` directory is ignored by Git because it contains generated artifacts.
-
-## Evaluation
-
-Evaluate the trained model on the validation split:
+Evaluate it on the held-out validation split:
 
 ```bash
-python -m src.evaluate --config config.yaml
+python main.py evaluate
 ```
 
-Evaluation saves metrics and plots under:
-
-```text
-outputs/evaluation/
-outputs/plots/
-```
-
-Main generated files:
-
-```text
-outputs/evaluation/evaluation_metrics.json
-outputs/plots/predicted_vs_true_steering.png
-outputs/plots/training_validation_loss.png
-```
-
-## Inference and Demo Frame Export
-
-Run inference on ordered image sequences:
+### Start the presentation demo
 
 ```bash
-python -m src.infer --config config.yaml --max-sequences 200
+python main.py
 ```
 
-Run inference and export annotated demo frames:
+`demo` is the default command, so this is equivalent to:
 
 ```bash
-python -m src.infer \
-  --config config.yaml \
-  --max-sequences 200 \
-  --export-demo-frames \
-  --max-demo-frames 50
+python main.py demo
 ```
 
-Inference saves predictions to:
+The demo uses **held-out validation sequences**, predicts the steering angle, displays predicted and true steering values on the camera frame, and shows a `POSSIBLE LANE CHANGE` warning when the steering-based detector is active.
 
-```text
-outputs/inference/steering_predictions.csv
+Press **Q** or **Esc** to stop the OpenCV demo window.
+
+Useful options:
+
+```bash
+python main.py demo --frames 100
+python main.py demo --delay 80
+python main.py demo --no-window
 ```
 
-Annotated demo frames are saved to:
+Run the complete workflow if needed:
 
-```text
-outputs/demo/annotated_frames/
+```bash
+python main.py all
 ```
 
-The exported frames can include:
+## Model
 
-* predicted steering-angle overlay
-* optional true steering-angle overlay
-* lane-change warning overlay when active
+For every sequence of five frames:
 
-## Lane-Change Warning
+1. `TimeDistributed` applies the same CNN to every frame.
+2. The CNN extracts spatial road-image features.
+3. `GlobalAveragePooling2D` converts every frame to a compact feature vector.
+4. The LSTM processes those vectors in temporal order.
+5. Dense layers regress one steering-angle value for the final frame.
 
-The lane-change warning is based on the predicted steering-angle sequence. The detector smooths predicted steering values and applies threshold-based sustained-deviation logic.
+The model uses MSE as the training loss and MAE as a Keras metric.
 
-This project does **not** perform real lane detection. It does not detect lane markers, lane boundaries, lane geometry, or vehicle position within the lane.
+## Important evaluation detail
 
-The warning should be interpreted as a steering-pattern heuristic for demonstration purposes.
+The temporal train/validation split is performed on the **raw ordered frames before overlapping sequences are created**. This prevents the same source frames from leaking into both training and validation sequences.
+
+Evaluation reports:
+
+- MAE
+- RMSE
+- predicted-vs-true steering plot
+- training-vs-validation loss plot
+
+## Lane-change warning
+
+The warning is deliberately simple and uses only the predicted steering sequence:
+
+1. causal moving-average smoothing;
+2. absolute steering threshold;
+3. the threshold must remain active for a minimum number of consecutive frames.
+
+It is a steering-pattern heuristic for the assignment, not a computer-vision lane-marker detector.
